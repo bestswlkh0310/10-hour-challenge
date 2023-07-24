@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>홈</title>
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        #root {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #todo-title {
+            margin-top: 30px;
+            color: rgb(0, 0, 0);
+            font-size: 30px;
+        }
+
+        .inputText {
+            margin-top: 20px;
+            font-size: 15px;
+        }
+
+        .inputText:focus {
+            outline: 0;
+        }
+
+        .cls-input {
+            width: 100%;
+            padding: 7px;
+            margin-bottom: 1vh;
+            border-radius: 6px;
+            border: none;
+            background-color: #fff;
+        }
+
+        #main {
+            width: 35vw;
+            min-width: 500px;
+            height: 500px;
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #todo-list {
+            padding: 10px;
+            margin-top: 3px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .todo {
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 10px 10px 10px 13px;
+            margin-bottom: 3px;
+            color: black;
+            list-style-type: none;
+            text-align: left;
+        }
+
+        .todo:hover {
+            background-color: #eee;
+            cursor: pointer;
+        }
+        .todo:active {
+            background-color: #ccc;
+        }
+
+        .checkbox {
+            margin-left: auto;
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox:checked {
+            border: none;
+        }
+
+        #btnDelete {
+            float: right;
+            margin-right: 10px;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .detail {
+            padding-bottom: 100px;
+        }
+
+        #btnContainer {
+            justify-content: flex-end;
+            margin-bottom: 13px;
+        }
+        .cls-background {
+            border-radius: 6px;
+            background-color: #ddd;
+        }
+
+        #register {
+            padding: 10px;
+            margin-top: 3px;
+        }
+
+        #date {
+            background-color: rgba(255, 255, 255, 0);
+            border: none;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .date-text {
+            font-size: 14px;
+        }
+
+        .submit {
+            background-color: #eee;
+        }
+
+        .submit:active {
+            background-color: #e4e4e4;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        textarea {
+            resize: none;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .cls-modal {
+            width: 100%;
+        }
+
+        .cls-invisible {
+            display: none;
+        }
+
+    </style>
+    <script th:inline="javascript">
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const todos = [[${todos}]];
+            console.log(todos);
+
+            const checkboxes = document.querySelectorAll(".checkbox");
+
+            checkboxes.forEach((checkbox, index) => {
+                checkbox.addEventListener("change", () => {
+                    const todoId = todos[index]['idx'];
+                    const checked = checkbox.checked;
+                    const url = "/home/update-todo-checked/" + todoId + "?checked=" + checked;
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.open("POST", url, true);
+                    xhr.onreadystatechange = () => {
+                        if (xhr.readyState === 4 && xhr.status === 200) {
+                            console.log(`update checked, code - ${xhr.status}, id - ${todoId}, checked - ${checked}`)
+                        }
+                    };
+                    xhr.send();
+                });
+            });
+        });
+
+        const onClickRegister = (event) => {
+            event.preventDefault();
+
+            const title = document.getElementById("title").value.trim();
+            const content = document.getElementById("content").value.trim();
+            const date = document.getElementById("date").value;
+
+            console.log(title, content, date)
+
+            if (!isValidText(title, "제목을 입력해주세요.") || !isValidText(content, "내용을 입력해주세요.") || !isValidText(date, "날짜를 선택해주세요.")) {
+                return false;
+            }
+
+            document.getElementById("register-form").submit();
+        }
+
+        const deleteAll = () => {
+            const url = "/home/delete-all/";
+            const xhr = new XMLHttpRequest();
+
+            xhr.open("POST", url, true);
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    console.log(`delete all todo, code - ${xhr.status}`)
+                }
+                location.reload();
+            };
+            xhr.send();
+        }
+
+        const onClickTodo = (clickedTodo) => {
+            const todos = [[${todos}]];
+            const idx = clickedTodo.getAttribute("data-index");
+            const todo = todos[idx];
+            console.log(todo);
+            document.getElementById('modal-title').innerText = todo.title;
+            document.getElementById('modal-content').innerText = todo.content;
+            document.getElementById('modal-created-time').innerText = todo.createdTime;
+            document.getElementById('modal-deadline').innerText = todo.deadTime;
+            document.getElementById('modal-idx').innerText = todo.idx;
+
+            openModal();
+        }
+
+        const closeModal = () => {
+            document.getElementById('todo-modal').style.display = 'none';
+        }
+
+        const openModal = () => {
+            document.getElementById('todo-modal').style.display = 'block';
+        }
+
+        const saveTodo = () => {
+            const url = "/home/save-todo/";
+            const xhr = new XMLHttpRequest();
+            const title = document.getElementById('modal-title').value
+            const content = document.getElementById('modal-content').value
+            if (isValidText(title, "제목을 입력해주세요.") && isValidText(content, "내용을 입력해주세요.")) {
+                const todoData = {
+                    idx: document.getElementById('modal-idx').innerText,
+                    title: title,
+                    content: content,
+                    createdTime: document.getElementById('modal-created-time').innerText,
+                    deadTime: document.getElementById('modal-deadline').innerText
+                };
+                xhr.open("POST", url, true);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        console.log(`save todo, code - ${xhr.status}`);
+                    }
+                    location.reload();
+                };
+
+                xhr.send(JSON.stringify(todoData));
+            }
+        };
+
+        const isValidText = (text, message) => {
+            if (text === "") {
+                console.log("empty")
+                alert(message);
+                return false;
+            }
+            return true;
+        }
+
+    </script>
+</head>
+<body>
+    <div id="root">
+        <div id="todo-title">당신이 할 일!!</div>
+        <div id="container">
+            <div id="register" class="cls-background">
+                <form id="register-form" action="/home/register-todo" method="post" th:object="${req}" onsubmit="onClickRegister(event)">
+                    <input class="inputText cls-input" minlength="1" th:field="*{title}" type="text" placeholder="할 일을 입력하세요">
+                    <textarea class="detail inputText cls-input" minlength="1" th:field="*{content}" placeholder="설명란입니당"></textarea>
+                    <div class="cls-input">
+                        <label class="date-text">마감일: </label>
+                        <input id="date" th:field="*{deadTime}" type="date" min="2023-01-01" max="2100-12-31">
+                        <label class="date-text">일까지 할 거예요</label>
+                    </div>
+                    <input class="submit cls-input" type="submit" value="등록">
+                </form>
+            </div>
+            <div id="main" class="cls-background">
+                <ul id="todo-list">
+                    <li class="todo" th:each="todo, idx : ${todos}" th:class="todo" th:attr="data-index=${idx.index}" onclick="onClickTodo(this)">
+                        <span th:text="${todo.title}"></span>
+                        <span th:text="${todo.deadTime}"></span>
+                        <input class="checkbox" type="checkbox" th:checked="${todo.done}">
+                    </li>
+                </ul>
+                <div id="btnContainer">
+                    <input class="submit" id="btnDelete" type="button" value="아!! 하기 싫어 - 다 지워버리고 포기하기" onclick="deleteAll()" onsubmit="return false;">
+                </div>
+            </div>
+        </div>
+        <div id="todo-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <textarea class="cls-modal" id="modal-title"></textarea>
+                <textarea class="cls-modal | detail" id="modal-content"></textarea>
+                <h1 class="cls-invisible" id="modal-idx"></h1>
+                <p id="modal-deadline"></p>
+                <p id="modal-created-time"></p>
+                <input class="submit cls-input" type="submit" value="저장" onclick="saveTodo();" onsubmit="return false;">
+            </div>
+        </div>
+    </div>
+</body>
+</html>
